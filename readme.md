@@ -29,7 +29,7 @@ zypper install go
 filecapsule -enc -file=text.zip
 ```
 
-그러면 같은 디렉토리에 test.zip.fncl 파일이 생성됩니다.
+그러면 같은 디렉토리에 test.zip.fcle 파일이 생성됩니다.
 
 ### 비밀번호 지정
 
@@ -44,15 +44,15 @@ filecapsule -enc -pw=custom_password -file=text.zip
 옵션에 -dec를 줌으로 파일을 복호화할 수 있습니다.
 
 ```bash
-filecapsule -dec -file=text.zip.fncl
+filecapsule -dec -file=text.zip.fcle
 ```
 
-마찬가지로 같은 디렉토리에 .fncl 확장자를 제거한 파일이 생성됩니다.
+마찬가지로 같은 디렉토리에 .fcle 확장자를 제거한 파일이 생성됩니다.
 
 ### 비밀번호 지정
 
 ```bash
-filecapsule -dec -pw=custom_password -file=text.zip.fncl
+filecapsule -dec -pw=custom_password -file=text.zip.fcle
 ```
 
 마찬가지로 -pw 플래그를 지정하여 전달합니다.
