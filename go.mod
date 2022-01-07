@@ -1,4 +1,4 @@
-module github.com/snowmerak/filecapsule
+module github.com/snowmerak/fcle
 
 go 1.16
 
