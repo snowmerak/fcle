@@ -21,6 +21,12 @@ dnf install go
 zypper install go
 ```
 
+그리고 다음 명령어를 실행합니다.
+
+```bash
+go install github.com/snowmerak/fcle@latest
+```
+
 ## 암호화
 
 옵션 -enc를 넣음으로 파일을 암호화합니다.
