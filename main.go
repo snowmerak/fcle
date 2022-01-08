@@ -16,7 +16,7 @@ import (
 
 const ext = ".fcle"
 
-const chunkSize = 2 << 16
+const chunkSize = 128 * (1 << 10)
 
 func main() {
 	enc := flag.Bool("enc", false, "encrypt mode")
