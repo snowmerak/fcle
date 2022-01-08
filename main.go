@@ -4,16 +4,19 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/golang/snappy"
 	"golang.org/x/crypto/blake2b"
-	"golang.org/x/crypto/chacha20poly1305"
+	"golang.org/x/crypto/chacha20"
 )
 
 const ext = ".fcle"
+
+const chunkSize = 2 << 16
 
 func main() {
 	enc := flag.Bool("enc", false, "encrypt mode")
@@ -132,7 +135,7 @@ func main() {
 
 func compress(from io.Reader, to io.Writer) error {
 	sw := snappy.NewWriter(to)
-	buf := [4096]byte{}
+	buf := [chunkSize]byte{}
 
 	for {
 		n, err := from.Read(buf[:])
@@ -152,7 +155,7 @@ func compress(from io.Reader, to io.Writer) error {
 
 func uncompress(from io.Reader, to io.Writer) error {
 	sr := snappy.NewReader(from)
-	buf := [4096]byte{}
+	buf := [chunkSize]byte{}
 
 	for {
 		n, err := sr.Read(buf[:])
@@ -171,24 +174,31 @@ func uncompress(from io.Reader, to io.Writer) error {
 }
 
 func encrypt(src io.Reader, dst io.Writer, password string) error {
+	nonce := make([]byte, chacha20.NonceSizeX)
+	rand.Read(nonce)
+	if _, err := dst.Write(nonce); err != nil {
+		return err
+	}
+
 	hashed := blake2b.Sum256([]byte(password))
-	aead, err := chacha20poly1305.NewX(hashed[:])
+	cipher, err := chacha20.NewUnauthenticatedCipher(hashed[:], nonce)
 	if err != nil {
 		return err
 	}
-	nonce := make([]byte, aead.NonceSize())
-	copy(nonce, hashed[:])
+
+	from := make([]byte, chunkSize)
+	to := make([]byte, chunkSize)
 
 	for {
-		buf := make([]byte, 4096)
-		n, err := src.Read(buf)
+		n, err := src.Read(from)
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
 			return err
 		}
-		if _, err := dst.Write(aead.Seal(nil, nonce, buf[:n], nil)); err != nil {
+		cipher.XORKeyStream(to, from[:n])
+		if _, err := dst.Write(to[:n]); err != nil {
 			return err
 		}
 	}
@@ -197,28 +207,33 @@ func encrypt(src io.Reader, dst io.Writer, password string) error {
 }
 
 func decrypt(src io.Reader, dst io.Writer, password string) error {
+	nonce := make([]byte, chacha20.NonceSizeX)
+	if _, err := src.Read(nonce); err != nil {
+		return err
+	}
+
 	hashed := blake2b.Sum256([]byte(password))
-	aead, err := chacha20poly1305.NewX(hashed[:])
+	cipher, err := chacha20.NewUnauthenticatedCipher(hashed[:], nonce)
 	if err != nil {
 		return err
 	}
-	nonce := make([]byte, aead.NonceSize())
-	copy(nonce, hashed[:])
+
+	from := make([]byte, chunkSize)
+	to := make([]byte, chunkSize)
 
 	for {
-		buf := make([]byte, 4096)
-		n, err := src.Read(buf)
+		n, err := src.Read(from)
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
 			return err
 		}
-		plain, err := aead.Open(nil, nonce, buf[:n], nil)
+		cipher.XORKeyStream(to, from[:n])
 		if err != nil {
 			return err
 		}
-		if _, err := dst.Write(plain); err != nil {
+		if _, err := dst.Write(to[:n]); err != nil {
 			return err
 		}
 	}
